@@ -1,0 +1,29 @@
+---
+id: db-tech-salon-2018-01
+base_name: mariadb-mroonga-all-languages-supported-super-fast-full-text-search-system
+tags:
+- rabbit
+- mariadb
+- mroonga
+- groonga
+- full-text-search
+- db-tech-salon
+presentation_date: 2018-01-30
+presentation_start_time: 2018-01-30T19:00:00+09:00
+presentation_end_time: 2018-01-30T20:00:00+09:00
+version: 2018.1.30.0
+licenses:
+- CC-BY-SA-4.0
+- CC-BY-3.0
+slideshare_id: 
+speaker_deck_id: 
+ustream_id: 
+vimeo_id: 
+youtube_id: 
+author:
+  markup_language: :rd
+  name: 須藤功平
+  email: kou@clear-code.com
+  rubygems_user: kou
+  slideshare_user: kou
+  speaker_deck_user: 
