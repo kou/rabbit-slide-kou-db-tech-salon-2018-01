@@ -31,8 +31,8 @@ file crimes_sql => crimes_csv do |task|
 DROP TABLE IF EXISTS crimes;
 CREATE TABLE crimes (
   id int PRIMARY KEY,
+  arrest boolean,
   domestic boolean,
-  beat boolean,
   ward int,
   community_area int,
   year int
@@ -45,8 +45,8 @@ SQL
           sql.puts(",") unless i.zero?
           values = [
             row["ID"],
+            row["Arrest"],
             row["Domestic"],
-            row["Beat"],
             row["Ward"],
             row["Community Area"],
             row["Year"],
