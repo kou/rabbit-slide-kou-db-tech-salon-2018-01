@@ -47,8 +47,8 @@ SQL
             row["ID"],
             row["Arrest"],
             row["Domestic"],
-            row["Ward"],
-            row["Community Area"],
+            row["Ward"] || 0,
+            row["Community Area"] || 0,
             row["Year"],
           ].join(", ")
           sql.print("(#{values})")
