@@ -24,6 +24,11 @@ file crimes_csv do |task|
      "https://data.cityofchicago.org/api/views/ijzp-q8t2/rows.csv?accessType=DOWNLOAD")
 end
 
+def sql_escape_string(string)
+  escaped_string = string.gsub(/'/, "''")
+  "'#{escaped_string}'"
+end
+
 crimes_sql = "crimes.sql"
 file crimes_sql => crimes_csv do |task|
   File.open(task.name, "w") do |sql|
@@ -31,6 +36,8 @@ file crimes_sql => crimes_csv do |task|
 DROP TABLE IF EXISTS crimes;
 CREATE TABLE crimes (
   id int PRIMARY KEY,
+  block varchar(512),
+  description varchar(512),
   arrest boolean,
   domestic boolean,
   ward int,
@@ -45,6 +52,8 @@ SQL
           sql.puts(",") unless i.zero?
           values = [
             row["ID"],
+            sql_escape_string(row["Block"]),
+            sql_escape_string(row["Description"]),
             row["Arrest"],
             row["Domestic"],
             row["Ward"] || 0,
