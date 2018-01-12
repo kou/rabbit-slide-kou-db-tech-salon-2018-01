@@ -62,6 +62,18 @@ MariaDB > select count(*) from crimes where match(block) against('+ave' in boole
 1 row in set (1.066 sec)
 ```
 
+半分くらい（300万件くらい）ヒットするケース。Groongaは0.3秒。
+
+```text
+MariaDB > select mroonga_command('select --table crimes --query "block:@ave" --limit 0 --output_columns _key') as response;
++----------------------------------+
+| response                         |
++----------------------------------+
+| [[[3126521],[["_key","Int32"]]]] |
++----------------------------------+
+1 row in set (0.305 sec)
+```
+
 半分くらい（300万件くらい）ヒットするケース。InnoDBは18秒。
 
 ```text
@@ -84,6 +96,18 @@ MariaDB> select count(*) from crimes where match(block) against('+milwaukee' in 
 |    38781 |
 +----------+
 1 row in set (0.022 sec)
+```
+
+4万件くらいヒットするケース。Groongaは0.01秒。
+
+```text
+MariaDB> select mroonga_command('select --table crimes --query "block:@milwaukee" --limit 0 --output_columns _key') as response;
++--------------------------------+
+| response                       |
++--------------------------------+
+| [[[38781],[["_key","Int32"]]]] |
++--------------------------------+
+1 row in set (0.010 sec)
 ```
 
 4万件ヒットするケース。InnoDBは0.2秒。
@@ -125,6 +149,18 @@ MariaDB> select count(*) from crimes where year = 2017;
 |   265156 |
 +----------+
 1 row in set (0.395 sec)
+```
+
+数値の等価条件1つで、26万件ヒットするケース。Groongaは0.4秒。
+
+```text
+MariaDB> select mroonga_command('select --table crimes --filter "year == 2017" --limit 0 --output_columns _key') as response;
++---------------------------------+
+| response                        |
++---------------------------------+
+| [[[265156],[["_key","Int32"]]]] |
++---------------------------------+
+1 row in set (0.361 sec)
 ```
 
 数値の等価条件1つで、26万件ヒットするケース。InnoDBは1.3秒。
@@ -169,6 +205,18 @@ MariaDB> select count(*) from crimes where year = 2017 and domestic = true and a
 1 row in set (0.365 sec)
 ```
 
+数値の等価条件1つと真偽値の等価条件2つで、7000件ヒットするケース。Groongaは0.4秒。
+
+```text
+MariaDB> select mroonga_command('select --table crimes --filter "year == 2017 && domestic == true && arrest == true" --limit 0 --output_columns _key') as response;
++-------------------------------+
+| response                      |
++-------------------------------+
+| [[[7148],[["_key","Int32"]]]] |
++-------------------------------+
+1 row in set (0.365 sec)
+```
+
 数値の等価条件1つと真偽値の等価条件2つで、7000件ヒットするケース。InnoDBは1.6秒。
 
 ```text
@@ -195,6 +243,18 @@ MariaDB> select count(*) from crimes where year = 2017 and domestic = true and a
 1 row in set (0.440 sec)
 ```
 
+数値の等価条件1つと真偽値の等価条件2つと全文検索（300万件くらいヒット）で、4000件ヒットするケース。Groongaは0.4秒。
+
+```text
+MariaDB> select mroonga_command('select --table crimes --filter "block @ \'ave\' && year == 2017 && domestic == true && arrest == true" --limit 0 --output_columns _key') as response;
++-------------------------------+
+| response                      |
++-------------------------------+
+| [[[3982],[["_key","Int32"]]]] |
++-------------------------------+
+1 row in set (0.436 sec)
+```
+
 数値の等価条件1つと真偽値の等価条件2つと全文検索（300万件くらいヒット）で、4000件ヒットするケース。InnoDBは18秒。
 
 ```text
@@ -216,6 +276,18 @@ MariaDB> select count(*) from crimes where year = 2017 and domestic = true and a
 +----------+
 |       10 |
 +----------+
+1 row in set (0.010 sec)
+```
+
+数値の等価条件1つと真偽値の等価条件2つと全文検索（4万件くらいヒット）で、10件ヒットするケース。Groongaは0.01秒。
+
+```text
+MariaDB> select mroonga_command('select --table crimes --filter "block @ \'milwaukee\' && year == 2017 && domestic == true && arrest == true" --limit 0 --output_columns _key') as response;
++-----------------------------+
+| response                    |
++-----------------------------+
+| [[[10],[["_key","Int32"]]]] |
++-----------------------------+
 1 row in set (0.010 sec)
 ```
 
