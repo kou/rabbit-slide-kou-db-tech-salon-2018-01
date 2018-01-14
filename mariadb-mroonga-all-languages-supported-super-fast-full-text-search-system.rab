@@ -1,4 +1,4 @@
-= MariaDBとMroongaで作る全言語対応超高速全文検索システム
+= MariaDBとMroongaで作る\n全言語対応\n超高速全文検索システム
 
 : author
    須藤功平
@@ -15,4 +15,1555 @@
 : theme
    .
 
-= ...
+= 全文検索システム\n対象
+
+(('tag:center'))
+(('tag:large'))
+(('tag:margin-bottom * 2'))
+大量のテキスト
+
+  * 例：Wikiのデータ
+  * 例：オフィス文書のテキスト
+  * 例：商品説明・口コミ
+
+= 全文検索システム\n目的
+
+  * 必要な情報を
+  * 必要なときに
+  * 活用
+
+= 必要な情報を活用
+
+  * ×
+    * 探している情報が見つからない
+  * ○
+    * 探している情報が見つかる
+  * ◎
+    * 意識していなかったけど\n
+      ((*実は欲しかった*))情報も見つかる！
+
+= 必要なときに活用
+
+  * ×
+    * なかなか見つからない
+  * ○
+    * すぐに見つかる
+  * ◎
+    * すでに見つかっていた
+    * 例：レコメンデーション
+
+= 実装方法\n選択肢
+
+  * 全文検索サーバーを使う
+  * MariaDBを使う
+
+= 全文検索サーバー案\nメリット
+
+  * 必要な機能が揃っている
+  * +αの機能もある
+  * 速い
+
+= 全文検索サーバー案\nデメリット
+
+  * 実装コスト大
+    * それぞれ独自の使い方だから
+    * マスターデータの同期はどうする？
+  * メンテナンスコスト大
+    * それぞれ独自の仕組みだから
+
+= MariaDB案\nメリット
+
+  * 実装コスト小
+    * 新しく覚えることが少ない
+    * データの一元管理
+  * メンテナンスコスト小
+    * 既存の運用ノウハウを使える
+
+= MariaDB案\nデメリット
+
+  * 組込機能では機能不足
+  * SQLの表現力不足
+    * 1クエリーで実現できない機能アリ
+    * ↑は性能を出しにくい
+
+= 実現方法\n第3の選択肢
+
+  * MariaDB経由（SQL）で\n
+    全文検索エンジンを使う
+
+= メリット
+
+  * 高速で豊富な機能
+  * 実装コスト小
+  * メンテナンスコスト小
+
+= デメリット
+
+  * MariaDBに拡張機能が必要
+    * RDS・Azure databaseで使えない\n
+      (('note:（Azure database for MariaDBはまだリリース前）'))
+
+= オススメの選択肢\n全文検索の知識ナシ
+
+  * まだ単純な機能で十分
+    * データ少：MariaDB単独でLIKE\n
+      (('note:（数十万件とか）'))
+    * データ中以上：\n
+      MariaDB経由で全文検索エンジン
+  * いまどきの全文検索機能が必要
+    * MariaDB経由で全文検索エンジン
+
+= オススメの選択肢\n全文検索の知識アリ
+
+  * カリカリにチューニングしたい
+    * MariaDBと全文検索サーバーを併用
+  * それ以外
+    * MariaDB経由で全文検索エンジン
+
+= 説明する選択肢
+
+MariaDB経由で\n
+全文検索\n
+エンジン
+
+= 全文検索エンジン\nGroonga（ぐるんが）
+
+  * 組込可能な全文検索エンジン
+    * MariaDBに組込→Mroonga
+    * PostgreSQLに組込→PGoonga
+  * 全文検索サーバーとして\n
+    単独でも使用可能
+    * MariaDBと全文検索サーバーを併用\n
+      もできる
+
+= Groongaの得意なこと
+
+  * データの追加・更新
+    * 新鮮な情報をすぐに検索可能に！
+    * 更新中も検索性能を落とさない！
+  * 日本語
+    * 開発者が日本人
+    * 便利機能が組み込み
+
+= Mroonga（むるんが）
+
+  * MySQLのストレージエンジン
+    * InnoDB・MyISAMなどと同じレイヤー
+  * 使用方法
+    * (({CREATE TABLE (...) ENGINE=Mroonga}))
+
+= 全文検索性能の違い\n計測データ
+
+  * 対象：Wikipedia日本語版
+  * レコード数：約185万件
+  * データサイズ：約7GB
+  * メモリー4GB・SSD250GB(('note:（ConoHa）'))
+
+= 検索性能1
+
+(('tag:center'))
+キーワード：テレビアニメ\n
+(('note:（ヒット数：約2万3千件）'))
+
+  # RT
+  delimiter = [|]
+
+  InnoDB ngram | 3m2s
+  InnoDB MeCab | 6m20s
+  Mroonga:((*1*)) | 0.11s
+
+= 検索性能2
+
+(('tag:center'))
+キーワード：データベース\n
+(('note:（ヒット数：約1万7千件）'))
+
+  # RT
+  delimiter = [|]
+
+  InnoDB ngram | 36s
+  InnoDB MeCab:((*1*)) | 0.03s
+  Mroonga:((*2*)) | 0.09s
+
+= 検索性能3
+
+(('tag:center'))
+キーワード：PostgreSQL OR MySQL\n
+(('note:（ヒット数：約400件）'))
+
+  # RT
+  delimiter = [|]
+
+  InnoDB ngram | N/A(Error)
+  InnoDB MeCab:((*1*)) | 0.005s
+  Mroonga:((*2*)) | 0.028s
+
+= 検索性能4
+
+(('tag:center'))
+キーワード：日本\n
+(('note:（ヒット数：約63万件）'))
+
+  # RT
+  delimiter = [|]
+
+  InnoDB ngram | 1.3s
+  InnoDB MeCab | 1.3s
+  Mroonga:((*1*)) | 0.21s
+
+= 全文検索性能まとめ
+
+  * Mroonga：安定して速い
+    * ((*SQLで使えて機能豊富で速い！*))
+  * InnoDB FTS MeCab
+    * ハマれば速い
+  * InnoDB FTS ngram
+    * 安定して遅い
+
+= 普通の検索も速い
+
+  * カラムストアを活かした最適化
+    * ポイント1：余計なI/Oを減らす
+    * ポイント2：I/Oを局所化
+
+= カラムストア
+
+  # image
+  # src = images/column-store.svg
+  # relative_width = 100
+
+= 必要なカラムのみアクセス
+
+  # coderay sql
+  -- aのみにアクセス
+  SELECT a
+    FROM table
+  -- cのみにアクセス
+   WHERE c = XXX;
+  -- bにはアクセスしない
+
+= 減ったI/O
+
+  # image
+  # src = images/not-access-to-needless-columns.svg
+  # relative_width = 100
+
+= 行カウント
+
+  # coderay sql
+  -- カラムの値は必要ない
+  SELECT COUNT(*)
+    FROM table
+  -- cの全文検索インデックスにだけアクセス
+   WHERE MATCH(c)
+       AGAINST('+keyword' IN BOOLEAN MODE);
+  -- a, b, cはアクセスしない
+
+= 減ったI/O
+
+  # image
+  # src = images/count-star.svg
+  # relative_width = 100
+
+= (({ORDER BY LIMIT}))
+
+  # coderay sql
+  SELECT *
+    FROM table
+   WHERE MATCH(c)
+       AGAINST('+keyword' IN BOOLEAN MODE)
+  -- MySQLではなくMroongaがORDER BY LIMITを処理
+  -- →Mroongaは10レコードだけMySQLに返す
+  --   マッチしたレコードすべては返さない
+   ORDER BY a LIMIT 10;
+
+= (({ORDER BY LIMIT}))の最適化
+
+  * (('wait'))Mroongaが検索
+    * カラム毎の処理でI/Oを局所化\n
+      (('note:（索引非使用時）'))
+  * (('wait'))Mroongaがソート
+    * カラム毎の処理でI/Oを局所化
+  * (('wait'))Mroongaが(({OFFSET}))/(({LIMIT}))を処理
+
+= カラム毎の処理は速い
+
+  # image
+  # src = images/per-column-processing.svg
+  # relative_width = 100
+
+= 検索性能
+
+  * インデックスなし
+  * TODO
+
+= 全文検索システムの実装
+
+  * 全文検索
+  * キーワードハイライト
+  * 周辺テキスト表示
+  * 入力補完
+  * 同義語展開
+  * 関連文書の表示
+
+= 全文検索
+
+  # image
+  # src = images/php-document-search-search.png
+  # relative_height = 100
+
+= テーブル定義：Mroonga
+
+  # coderay sql
+
+  CREATE TABLE entries (
+    title text,
+    content text,
+    -- 全文検索用インデックス
+    -- よくわからないならデフォルトのまま使うこと！
+    FULLTEXT INDEX (title, content)
+  ) ENGINE=Mroonga
+    DEFAULT CHARSET=utf8mb4;
+
+== スライドプロパティ
+
+: groonga-product
+
+   mroonga
+
+= データ挿入：Mroonga
+
+  # coderay sql
+
+  -- 普通に挿入するだけでよい
+  INSERT INTO entries
+    VALUES ('タイトル',
+            '高速に全文検索したいですね！');
+
+== スライドプロパティ
+
+: groonga-product
+
+   mroonga
+
+= 全文検索：Mroonga
+
+  # coderay sql
+
+  SELECT title FROM entries
+    WHERE -- MATCH AGAINSTで全文検索
+      MATCH (title, content)
+      -- デフォルトORがMySQLの仕様
+      -- 「検索」または「高速」を含むとマッチ
+      AGAINST ('検索 高速'
+               IN BOOLEAN MODE);
+
+== スライドプロパティ
+
+: groonga-product
+
+   mroonga
+
+= AND全文検索：Mroonga
+
+  # coderay sql
+
+  MATCH (title, content)
+  -- 各キーワードの前に「+」をつけるとAND
+  -- 「検索」かつ「高速」を含むとマッチ
+  AGAINST ('+検索 +高速'
+           IN BOOLEAN MODE);
+
+== スライドプロパティ
+
+: groonga-product
+
+   mroonga
+
+= 使いやすいAND全文検索\nMroonga
+
+  # coderay sql
+
+  MATCH (title, content)
+  -- 最初に「*D+」をつけるとデフォルトAND
+  -- Mroonga独自機能
+  -- 「検索」かつ「高速」を含むとマッチ
+  AGAINST ('*D+ 検索 高速'
+           IN BOOLEAN MODE);
+
+== スライドプロパティ
+
+: groonga-product
+
+   mroonga
+
+= スコアー：Mroonga
+
+  # coderay sql
+
+  SELECT
+    title,
+    -- ここのMATCH AGAINSTはスコアーを返す
+    MATCH (title, content)
+      AGAINST ('*D+ 検索 高速'
+               IN BOOLEAN MODE) AS score
+    FROM entries
+    WHERE -- ...
+    -- スコアーが高い順にソート
+    ORDER BY score DESC LIMIT 10;
+
+== スライドプロパティ
+
+: groonga-product
+
+   mroonga
+
+= テーブル定義：PGroonga
+
+  # coderay sql
+
+  CREATE TABLE entries (
+    -- プライマリーキーを用意する
+    -- スコアーでソートするために必要
+    id integer PRIMARY KEY,
+    title text,
+    content text
+  );
+
+== スライドプロパティ
+
+: groonga-product
+
+   pgroonga
+
+= インデックス定義\nPGroonga
+
+  # coderay sql
+
+  -- 全文検索用インデックス
+  -- よくわからないなら
+  -- デフォルトのまま使うこと！
+  CREATE INDEX entries_full_text_search
+    ON entries
+    --「USING PGroonga」=「PGroongaを使う」
+    -- スコアーを使うために主キーを入れること！
+    USING PGroonga (id, title, content);
+
+== スライドプロパティ
+
+: groonga-product
+
+   pgroonga
+
+= データ挿入：PGroonga
+
+  # coderay sql
+
+  -- 普通に挿入するだけでよい
+  INSERT INTO entries
+    VALUES (1,
+            'Groongaで高速全文検索！',
+            '高速に全文検索したいですね！');
+
+== スライドプロパティ
+
+: groonga-product
+
+   pgroonga
+
+= 全文検索：PGroonga
+
+  # coderay sql
+
+  SELECT title FROM entries
+    WHERE
+  -- &@~で全文検索
+  -- 「検索」と「高速」をAND検索
+      title &@~ '検索 高速' OR
+      content &@~ '検索 高速';
+
+== スライドプロパティ
+
+: groonga-product
+
+   pgroonga
+
+= 全文検索：LIKE\nPGroonga
+
+  # coderay sql
+
+  SELECT title FROM entries
+    WHERE
+  -- LIKEでもインデックスが効く
+  --＝アプリを書き換えずに高速化可能
+  -- ただし&@~より性能が落ちる
+      title LIKE '%検索%' OR
+      content LIKE '%検索%';
+
+== スライドプロパティ
+
+: groonga-product
+
+   pgroonga
+
+= スコアー：PGroonga
+
+  # coderay sql
+
+  SELECT
+      title,
+      -- pgroonga_score(テーブル名)で
+      -- スコアーを取得
+      pgroonga_score(entries) AS score
+    FROM entries
+    WHERE -- ...
+    -- スコアーが高い順にソート
+    ORDER BY score DESC LIMIT 10;
+
+== スライドプロパティ
+
+: groonga-product
+
+   pgroonga
+
+= ハイライト
+
+  # image
+  # src = images/php-document-search-search.png
+  # relative_height = 100
+
+= ハイライト：Mroonga
+
+  # coderay sql
+
+  SELECT mroonga_highlight_html(
+           title, '*D+ 検索 高速' AS query)
+    -- クエリーからハイライト対象のキーワードを抽出
+    FROM entries
+    WHERE
+      MATCH (title, content)
+      AGAINST ('*D+ 検索 高速' IN BOOLEAN MODE);
+
+== スライドプロパティ
+
+: groonga-product
+
+   mroonga
+
+= ハイライト結果例
+
+  # coderay html
+
+  <Groonga>で高速全文検索！
+  ↓
+  &lt;Groonga&gt;で ← タグをエスケープ
+  <span class="keyword">高速</span>
+  全文 ↑↓キーワードはclass付け
+  <span class="keyword">検索</span>！
+
+== スライドプロパティ
+
+: groonga-product
+
+   mroonga
+
+= ハイライト：PGroonga
+
+  # coderay sql
+
+  SELECT
+    pgroonga_highlight_html(
+      title,
+      -- クエリーから対象キーワードを抽出
+      pgroonga_query_extract_keywords('検索 高速'))
+    FROM entries
+    WHERE title &@~ '検索 高速' OR
+          content &@~ '検索 高速';
+
+== スライドプロパティ
+
+: groonga-product
+
+   pgroonga
+
+= ハイライト結果例
+
+  # coderay html
+
+  <Groonga>で高速全文検索！
+  ↓
+  &lt;Groonga&gt;で ← タグをエスケープ
+  <span class="keyword">高速</span>
+  全文 ↑↓キーワードはclass付け
+  <span class="keyword">検索</span>！
+
+== スライドプロパティ
+
+: groonga-product
+
+   pgroonga
+
+= 周辺テキスト
+
+  # image
+  # src = images/php-document-search-search.png
+  # relative_height = 100
+
+= 周辺テキスト：Mroonga
+
+  # coderay sql
+
+  SELECT mroonga_snippet_html(
+           content, '*D+ 検索 高速' AS query)
+    -- クエリーから対象のキーワードを抽出
+    FROM entries
+    WHERE
+      MATCH (title, content)
+      AGAINST ('*D+ 検索 高速' IN BOOLEAN MODE);
+
+== スライドプロパティ
+
+: groonga-product
+
+   mroonga
+
+= 周辺テキスト結果例
+
+  # coderay html
+
+  ...<Groonga>で高速全文検索！...
+  ↓
+  <div class="snippet"> ←1つ目
+  ga&gt;で ←タグをエスケープ
+  <span class="keyword">高速</span>
+  全文 ↑↓キーワードはclass付け
+  <span class="keyword">検索/span>！
+  </div>
+  <div class="snippet">...</div> ←2つ目
+
+== スライドプロパティ
+
+: groonga-product
+
+   mroonga
+
+= 周辺テキスト：PGroonga
+
+  # coderay sql
+
+  SELECT
+    pgroonga_snippet_html(
+      content,
+      -- クエリーから対象キーワードを抽出
+      pgroonga_query_extract_keywords('検索 高速'))
+    FROM entries
+    WHERE title &@~ '検索 高速' OR
+          content &@~ '検索 高速';
+
+== スライドプロパティ
+
+: groonga-product
+
+   pgroonga
+
+= 周辺テキスト結果例
+
+  # coderay html
+
+  ...<Groonga>で高速全文検索！...
+  ↓
+  ARRAY[
+    ↓ 1つ目
+    'ga&gt;で ←タグをエスケープ
+     <span class="keyword">高速</span>
+     全文 ↑↓キーワードはclass付け
+     <span class="keyword">検索/span>！',
+    '...' ← 2つ目
+  ]
+
+== スライドプロパティ
+
+: groonga-product
+
+   pgroonga
+
+= 入力補完
+
+  # image
+  # src = images/php-document-search.png
+  # relative_height = 100
+
+= 入力補完\n実装方法
+
+  * 以下の検索のOR
+    * ヨミガナでの前方一致検索
+    * 緩い全文検索
+  * 表示文字列でソートして提示
+
+(('tag:xx-small'))
+https://pgroonga.github.io/ja/how-to/auto-complete.html
+
+= 入力補完：Mroonga\nテーブル定義：補完候補
+
+  # coderay sql
+
+  CREATE TABLE terms (
+    term varchar(256),       -- 補完候補
+    reading varchar(256),    -- ヨミガナ
+    PRIMARY KEY (term, reading),
+    FULLTEXT INDEX (term)    -- 候補全文検索用
+      -- 緩い全文検索用トークナイザー
+      COMMENT 'tokenizer "TokenBigramSplitSymbolAlpha"',
+    FULLTEXT INDEX (reading) -- ヨミガナ前方一致用
+      COMMENT 'normalizer "NormalizerAuto",
+               tokenizer "off"' -- トークナイザー不要
+  ) ENGINE=Mroonga DEFAULT CHARSET=utf8mb4;
+
+== スライドプロパティ
+
+: groonga-product
+
+   mroonga
+
+= 入力補完：Mroonga\nデータ例
+
+  # coderay sql
+
+  INSERT INTO terms VALUES (
+    '牛乳', -- 補完候補
+    'ギュウニュウ' --ヨミガナはカタカナで指定
+  );
+  INSERT INTO terms VALUES (
+    '牛乳',
+    'ミルク' -- 「ミルク」でも補完できるように
+  );
+
+== スライドプロパティ
+
+: groonga-product
+
+   mroonga
+
+= 入力補完：Mroonga\nデータ管理のポイント
+
+  * 普通のテーブルなので管理が楽
+    * 追加・削除・更新が楽
+    * ダンプ・リストアもいつも通り
+    * レプリケーションもいつも通り
+
+== スライドプロパティ
+
+: groonga-product
+
+   mroonga
+
+= 入力補完：Mroonga\n検索方法
+
+  # coderay sql
+
+  SELECT DISTINCT(term) FROM terms
+   WHERE MATCH (reading) -- ヨミガナ前方一致検索
+       AGAINST (CONCAT('*SS prefix_rk_search(reading, ',
+                       mroonga_escape(${入力} AS script),
+                       ')') IN BOOLEAN MODE) OR
+         MATCH (term) -- 候補を緩く全文検索
+       AGAINST (CONCAT('*D+ ', mroonga_escape(${入力})))
+                IN BOOLEAN MODE)
+    ORDER BY term LIMIT 10; -- ソート
+
+== スライドプロパティ
+
+: groonga-product
+
+   mroonga
+
+= 入力補完：Mroonga\n検索例：漢字1
+
+  # coderay sql
+
+  -- ユーザーが「牛」を入力した場合
+  SELECT DISTINCT(term) FROM terms
+   WHERE MATCH (reading) -- ヨミガナ前方一致検索
+       AGAINST (CONCAT('*SS prefix_rk_search(reading, ',
+                       mroonga_escape('牛' AS script),
+                       ')') IN BOOLEAN MODE) OR
+         MATCH (term) -- 候補を緩く全文検索（ヒット）
+       AGAINST (CONCAT('*D+ ', mroonga_escape('牛')))
+                IN BOOLEAN MODE)
+    ORDER BY term LIMIT 10; -- ソート
+
+== スライドプロパティ
+
+: groonga-product
+
+   mroonga
+
+= 入力補完：Mroonga\n検索例：漢字2
+
+  # coderay sql
+
+  -- ユーザーが「乳」を入力した場合
+  SELECT DISTINCT(term) FROM terms
+   WHERE MATCH (reading) -- ヨミガナ前方一致検索
+       AGAINST (CONCAT('*SS prefix_rk_search(reading, ',
+                       mroonga_escape('乳' AS script),
+                       ')') IN BOOLEAN MODE) OR
+         MATCH (term) -- 候補を緩く全文検索（ヒット）
+       AGAINST (CONCAT('*D+ ', mroonga_escape('乳')))
+                IN BOOLEAN MODE)
+    ORDER BY term LIMIT 10; -- ソート
+
+== スライドプロパティ
+
+: groonga-product
+
+   mroonga
+
+= 入力補完\n検索例：カタカナ
+
+  # coderay sql
+
+  -- ユーザーが「ギュウ」を入力した場合
+  SELECT DISTINCT(term) FROM terms
+   WHERE MATCH (reading) -- ヨミガナ前方一致検索（ヒット）
+       AGAINST (CONCAT('*SS prefix_rk_search(reading, ',
+                       mroonga_escape('ギュウ' AS script),
+                       ')') IN BOOLEAN MODE) OR
+         MATCH (term) -- 候補を緩く全文検索
+       AGAINST (CONCAT('*D+ ', mroonga_escape('ギュウ')))
+                IN BOOLEAN MODE)
+    ORDER BY term LIMIT 10; -- ソート
+
+== スライドプロパティ
+
+: groonga-product
+
+   mroonga
+
+= 入力補完\n検索例：ひらがな
+
+  # coderay sql
+
+  -- ユーザーが「ぎゅう」を入力した場合
+  SELECT DISTINCT(term) FROM terms
+   WHERE MATCH (reading) -- ヨミガナ前方一致検索（ヒット）
+       AGAINST (CONCAT('*SS prefix_rk_search(reading, ',
+                       mroonga_escape('ぎゅう' AS script),
+                       ')') IN BOOLEAN MODE) OR
+         MATCH (term) -- 候補を緩く全文検索
+       AGAINST (CONCAT('*D+ ', mroonga_escape('ぎゅう')))
+                IN BOOLEAN MODE)
+    ORDER BY term LIMIT 10; -- ソート
+
+== スライドプロパティ
+
+: groonga-product
+
+   mroonga
+
+= 入力補完：Mroonga\n検索例：ローマ字
+
+  # coderay sql
+
+  -- ユーザーが「gyu」を入力した場合
+  SELECT DISTINCT(term) FROM terms
+   WHERE MATCH (reading) -- ヨミガナ前方一致検索（ヒット）
+       AGAINST (CONCAT('*SS prefix_rk_search(reading, ',
+                       mroonga_escape('gyu' AS script),
+                       ')') IN BOOLEAN MODE) OR
+         MATCH (term) -- 候補を緩く全文検索
+       AGAINST (CONCAT('*D+ ', mroonga_escape('gyu')))
+                IN BOOLEAN MODE)
+    ORDER BY term LIMIT 10; -- ソート
+
+== スライドプロパティ
+
+: groonga-product
+
+   mroonga
+
+= 入力補完：PGroonga\nテーブル定義
+
+  # coderay sql
+
+  CREATE TABLE terms (
+    -- 補完候補
+    term text,
+    -- この候補のヨミガナ（N個可）
+    readings text[]
+  );
+
+== スライドプロパティ
+
+: groonga-product
+
+   pgroonga
+
+= 入力補完：PGroonga\nデータ例
+
+  # coderay sql
+
+  INSERT INTO terms VALUES (
+    '牛乳', -- 補完候補
+    ARRAY[
+     -- ヨミガナはカタカナで指定する
+     'ギュウニュウ',
+     -- 「ミルク」でも補完できるようになる
+     'ミルク'
+    ]
+  );
+
+== スライドプロパティ
+
+: groonga-product
+
+   pgroonga
+
+= 入力補完：PGroonga\nデータ管理のポイント
+
+  * 普通のテーブルなので管理が楽
+    * 追加・削除・更新が楽
+    * ダンプ・リストアもいつも通り
+    * レプリケーションもいつも通り
+
+== スライドプロパティ
+
+: groonga-product
+
+   pgroonga
+
+= 入力補完：PGroonga\n前方一致用インデックス
+
+  # coderay sql
+
+  CREATE INDEX prefix_search ON terms
+    USING PGroonga
+    -- ...text_array_term_search...
+    (readings pgroonga_text_array_term_search_ops_v2);
+
+== スライドプロパティ
+
+: groonga-product
+
+   pgroonga
+
+= 入力補完：PGroonga\n緩い全文検索用
+
+  # coderay sql
+
+  CREATE INDEX loose_search ON terms
+    USING PGroonga (term)
+    -- 緩い全文検索用トークナイザー
+    WITH (tokenizer='TokenBigramSplitSymbolAlphaDigit');
+
+== スライドプロパティ
+
+: groonga-product
+
+   pgroonga
+
+= 入力補完：PGroonga\n検索方法
+
+  # coderay sql
+
+  SELECT term FROM terms
+    -- ヨミガナで前方一致検索
+    WHERE readings &^~ '${入力}' OR
+          -- 緩い全文検索
+          term &@ '${入力}'
+    ORDER BY term LIMIT 10; -- ソート
+
+== スライドプロパティ
+
+: groonga-product
+
+   pgroonga
+
+= 入力補完：PGroonga\n検索例：漢字1
+
+  # coderay sql
+
+  -- ユーザーが「牛」を入力した場合
+  SELECT term FROM terms
+    -- ヨミガナで前方一致検索
+    WHERE readings &^~ '牛' OR
+          -- 緩い全文検索（ヒット）
+          term &@ '牛'
+    ORDER BY term LIMIT 10; -- ソート
+
+== スライドプロパティ
+
+: groonga-product
+
+   pgroonga
+
+= 入力補完：PGroonga\n検索例：漢字2
+
+  # coderay sql
+
+  -- ユーザーが「乳」を入力した場合
+  SELECT term FROM terms
+    -- ヨミガナで前方一致検索
+    WHERE readings &^~ '乳' OR
+          -- 緩い全文検索（ヒット）
+          term &@ '乳'
+    ORDER BY term LIMIT 10; -- ソート
+
+== スライドプロパティ
+
+: groonga-product
+
+   pgroonga
+
+= 入力補完：PGroonga\n検索例：カタカナ
+
+  # coderay sql
+
+  -- ユーザーが「ギュウ」を入力した場合
+  SELECT term FROM terms
+  -- ヨミガナで前方一致検索（ヒット）
+    WHERE readings &^~ 'ギュウ' OR
+          -- 緩い全文検索
+          term &@ 'ギュウ'
+    ORDER BY term LIMIT 10; -- ソート
+
+== スライドプロパティ
+
+: groonga-product
+
+   pgroonga
+
+= 入力補完：PGroonga\n検索例：ひらがな
+
+  # coderay sql
+
+  -- ユーザーが「ぎゅう」を入力した場合
+  SELECT term FROM terms
+  -- ヨミガナで前方一致検索（ヒット）
+    WHERE readings &^~ 'ぎゅう' OR
+          -- 緩い全文検索
+          term &@ 'ぎゅう'
+    ORDER BY term LIMIT 10; -- ソート
+
+== スライドプロパティ
+
+: groonga-product
+
+   pgroonga
+
+= 入力補完：PGroonga\n検索例：ローマ字
+
+  # coderay sql
+
+  -- ユーザーが「gyu」を入力した場合
+  SELECT term FROM terms
+  -- ヨミガナで前方一致検索（ヒット）
+    WHERE readings &^~ 'gyu' OR
+          -- 緩い全文検索
+          term &@ 'gyu'
+    ORDER BY term LIMIT 10; -- ソート
+
+== スライドプロパティ
+
+: groonga-product
+
+   pgroonga
+
+= 同義語展開
+
+  * 同義語
+    * 同じ意味だが表記が異なる語
+    * 例：「刺身」と「お造り」
+  * どの表記でもヒットして欲しい
+    * 同義語展開→同義語すべてでOR検索
+
+= 同義語展開\n実装方法
+
+  * 同義語管理テーブルを作成
+  * クエリー内の同義語を展開
+  * 展開後のクエリーで検索
+
+(('tag:xx-small'))
+https://pgroonga.github.io/ja/reference/functions/pgroonga-query-expand.html
+
+= 同義語展開：Mroonga\nテーブル定義
+
+  # coderay sql
+  CREATE TABLE synonyms (
+    term varchar(255),    -- 展開対象の語
+    synonym varchar(255), -- 同義語
+    INDEX (term)          -- 高速化と精度向上
+      COMMENT 'normalizer "NormalizerAuto"'
+  ) ENGINE=Mroonga DEFAULT CHARSET=utf8mb4;
+
+== スライドプロパティ
+
+: groonga-product
+
+   mroonga
+
+= 同義語展開\nデータ例
+
+  # coderay sql
+  INSERT INTO synonyms
+  -- 「刺身」を「刺身 OR お造り」に展開
+    VALUES ('刺身', '刺身'),
+           ('刺身', 'お造り'),
+  -- 「お造り」を「お造り OR 刺身」に展開
+           ('お造り', 'お造り'),
+           ('お造り', '刺身');
+
+== スライドプロパティ
+
+: groonga-product
+
+   mroonga
+
+= 同義語展開\nデータ管理のポイント
+
+  * 普通のテーブルなので管理が楽
+    * 追加・削除・更新が楽
+    * ダンプ・リストアもいつも通り
+    * レプリケーションもいつも通り
+
+== スライドプロパティ
+
+: groonga-product
+
+   mroonga
+
+= 同義語展開：Mroonga\n確認方法
+
+  # coderay sql
+
+  SELECT mroonga_query_expand(
+    'synonyms',   -- テーブル名
+    'term',       -- 展開対象のカラム名
+    'synonym',    -- 対応する同義語のカラム名
+    '居酒屋 刺身' -- クエリー
+  );
+  -- '居酒屋 ((刺身) OR (お造り))'
+
+== スライドプロパティ
+
+: groonga-product
+
+   mroonga
+
+= 同義語展開：Mroonga\n検索方法
+
+  # coderay sql
+  SELECT title FROM entries
+    WHERE
+      MATCH (title)
+      -- '*D+ 居酒屋 OR ((刺身) OR (お造り))'になる
+      AGAINST (mroonga_query_expand('synonyms',
+                                    'term',
+                                    'synonym',
+                                    '*D+ 居酒屋 刺身')
+               IN BOOLEAN MODE);
+
+== スライドプロパティ
+
+: groonga-product
+
+   mroonga
+
+= 同義語展開：PGroonga\nテーブル定義
+
+  # coderay sql
+  CREATE TABLE synonyms (
+    -- 展開対象の語
+    term text,
+    -- 同義語のリスト
+    -- term自身も含める
+    -- 含めない場合はtermが検索禁止語になる
+    terms text[]
+  );
+
+== スライドプロパティ
+
+: groonga-product
+
+   pgroonga
+
+= 同義語展開：PGroonga\nデータ例
+
+  # coderay sql
+  INSERT INTO synonyms
+    VALUES ('刺身', -- 「刺身」を展開
+            ARRAY['刺身', 'お造り']),
+           ('お造り', -- 「お造り」を展開
+            ARRAY['お造り', '刺身']);
+
+== スライドプロパティ
+
+: groonga-product
+
+   pgroonga
+
+= 同義語展開：PGroonga\nデータ管理のポイント
+
+  * 普通のテーブルなので管理が楽
+    * 追加・削除・更新が楽
+    * ダンプ・リストアもいつも通り
+    * レプリケーションもいつも通り
+
+== スライドプロパティ
+
+: groonga-product
+
+   pgroonga
+
+= 同義語展開：PGroonga\nインデックス定義
+
+  # coderay sql
+  CREATE INDEX synonym_search ON synonyms
+    USING PGroonga
+    -- ...text_term_search...
+    -- termで完全一致検索をするため
+    (term pgroonga_text_term_search_ops_v2);
+
+== スライドプロパティ
+
+: groonga-product
+
+   pgroonga
+
+= 同義語展開：PGroonga\n確認方法
+
+  # coderay sql
+
+  SELECT pgroonga_query_expand(
+    'synonyms', -- テーブル名
+    'term', -- 展開対象のカラム名
+    'terms', -- 対応する同義語配列のカラム名
+    '刺身' -- クエリー
+  );
+  -- '((刺身) OR (お造り))'
+
+== スライドプロパティ
+
+: groonga-product
+
+   pgroonga
+
+= 同義語展開：PGroonga\n検索方法
+
+  # coderay sql
+  SELECT title FROM entries
+    WHERE
+   -- title &@~ '居酒屋 ((刺身) OR (お造り))'になる
+      title &@~
+        pgroonga_query_expand('synonyms',
+                              'term',
+                              'terms',
+                              '居酒屋 刺身');
+
+== スライドプロパティ
+
+: groonga-product
+
+   pgroonga
+
+= 類似文書検索
+
+  * 検索クエリーは文書そのもの
+    * キーワードではない
+  * 関連エントリーの提示に使える
+    * メタデータがあるなら組み合わせる\n
+      →精度向上
+    * メタデータ：タグ・行動履歴など
+
+= 類似文書検索：Mroonga\nインデックス定義
+
+  # coderay sql
+
+  CREATE TABLE entries (
+    -- ...
+    FULLTEXT INDEX (content)
+      -- TokenMecabを使わないと精度がでない
+      -- 必要なときだけカスタマイズ！
+      COMMENT 'tokenizer "TokenMecab"'
+  ) -- ...
+
+== スライドプロパティ
+
+: groonga-product
+
+   mroonga
+
+= 類似文書検索：Mroonga\n検索方法
+
+  # coderay sql
+
+  SELECT title
+    FROM entries
+    WHERE
+      MATCH (content)
+      -- ↓ 既存文書の内容をそのまま指定
+      AGAINST ('...Groongaで高速全文検索！...'
+               IN NATURAL LANGUAGE MODE);
+
+== スライドプロパティ
+
+: groonga-product
+
+   mroonga
+
+= 類似文書検索：Mroonga\n結果例
+
+  クエリー：
+     ...Groongaで高速全文検索！...
+
+  ヒット例：
+     ...Mroongaで高速全文検索！...
+
+== スライドプロパティ
+
+: groonga-product
+
+   mroonga
+
+= 照合順序：COLLATION
+
+  * 文字の並び順の規則
+    * 文字が同一かどうかの判定にも利用
+  * 適切な日本語規則なし
+    * いわゆる🍣＝🍺問題
+
+(('note:MySQL 8では適切な日本語規則が追加される'))
+
+== スライドプロパティ
+
+: groonga-product
+
+   mroonga
+
+= Mroongaの照合順序
+
+  * MySQL互換のもの
+  * MySQL互換を微調整したもの
+    * 日本語でもいい感じ
+  * Groonga提供のもの
+    * 日本語でもいい感じ
+
+== スライドプロパティ
+
+: groonga-product
+
+   mroonga
+
+= 微調整した照合順序
+
+  # coderay sql
+  FULLTEXT INDEX (content)
+    COMMENT 'normalizer "${ノーマライザー名}"'
+  ノーマライザー名：
+    NormalizerMySQLUnicode520CI
+      ExceptKanaCI
+            KanaWithVoicedSoundMark
+
+== スライドプロパティ
+
+: groonga-product
+
+   mroonga
+
+= 類似文書検索：PGroonga\nインデックス定義
+
+  # coderay sql
+
+  CREATE INDEX entries_similar_search
+    ON entries
+    USING PGroonga (id, content)
+    -- TokenMecabを使うと精度向上
+    WITH (tokenizer='TokenMecab');
+
+== スライドプロパティ
+
+: groonga-product
+
+   pgroonga
+
+= 類似文書検索：PGroonga\n検索方法
+
+  # coderay sql
+
+  SELECT title
+    FROM entries
+    WHERE
+      -- &@*で類似文書検索
+      -- 既存文書の内容をそのまま指定
+      content &@*
+        '...Groongaで高速全文検索！...';
+
+== スライドプロパティ
+
+: groonga-product
+
+   pgroonga
+
+= 類似文書検索：PGroonga\n結果例
+
+  クエリー：
+     ...Groongaで高速全文検索！...
+
+  ヒット例：
+     ...PGroongaで高速全文検索！...
+
+== スライドプロパティ
+
+: groonga-product
+
+   pgroonga
+
+= 全文検索システムの実装\nまとめ
+
+  * 全文検索
+  * キーワードハイライト
+  * 周辺テキスト表示
+  * 入力補完・同義語展開
+  * 関連文書の表示
+
+= 全文検索システムの実装\n次の一歩
+
+  * 構造化データ対応
+    * オフィス文書・HTMLなど
+  * 対応に必要な処理
+    * テキスト抽出
+    * メタデータ抽出(('note:（例：タイトル・更新日時）'))
+    * スクリーンショット作成(('note:（なおよい）'))
+
+= 抽出ツール
+
+  * Apache Tika
+    * Apache Luceneのサブプロジェクト
+    * 対応フォーマット数が多い
+  * ChupaText
+    * Groongaのサブプロジェクト
+    * スクリーンショット作成対応
+
+= ChupaText
+
+  * 対応フォーマット
+    * Word/Excel/PowerPoint
+    * ODT/ODS/ODP(('note:（OpenDocument）'))
+    * PDF/HTML/XML/CSV/...
+  * インターフェイス
+    * HTTPとコマンドライン
+
+= ChupaText：インストール
+
+  * DockerかVagrantを使うのが楽
+    * (('tag:xx-small'))
+      https://github.com/ranguba/chupa-text-docker
+    * (('tag:xx-small'))
+      https://github.com/ranguba/chupa-text-vagrant
+
+= ChupaText：Docker
+
+  # coderay console
+  % GITHUB=https://github.com
+  % git clone \
+     ${GITHUB}/ranguba/chupa-text-docker.git
+  % cd chupa-text-docker
+  % docker-compose up --build
+
+= ChupaText：使い方
+
+  # coderay console
+  % curl \
+      --form data=@XXX.pdf \
+      http://localhost:20080/extraction.json
+
+= ChupaText：結果例
+
+  # coderay json
+
+  {
+    "mime-type": "application/pdf", # 元データのMIMEタイプ
+    "size": 147159, # メタデータ
+    ...,
+    "texts": [ # 抽出されたテキスト（N個）
+      {
+        "mime-type": "text/plain", # 抽出後のMIMEタイプ
+        ...,
+        "creator": "Adobe Illustrator CS3", # メタデータ
+        "body": "This is sample PDF. ...", # 抽出したテキスト
+        "screenshot": {
+          "mime-type": "image/png", # スクリーンショットのMIMEタイプ
+          "data": "iVBORw...", # Base64にした画像データ
+          "encoding": "base64" # Base64であることを明記
+        }
+      }
+    ]
+  }
+
+= ChupaText：Web UI
+
+  # image
+  # src = images/chupa-text-web-ui-form.png
+  # relative_height = 100
+
+= ChupaText：Web UI抽出例
+
+  # image
+  # src = images/chupa-text-web-ui-extract-metadata.png
+  # relative_height = 100
+
+= ChupaText：Web UI抽出例
+
+  # image
+  # src = images/chupa-text-web-ui-extract-text-and-screenshot.png
+  # relative_height = 100
+
+= ChupaText：Vagrant
+
+  # coderay console
+  % GITHUB=https://github.com
+  % git clone \
+     ${GITHUB}/ranguba/chupa-text-vagrant.git
+  % cd chupa-text-vagrant
+  % vagrant up
+
+(('tag:center'))
+使い方はDocker版と同じ
+
+= ChupaText：活用例
+
+  * 抽出したテキスト
+    * Mroonga・PGroongaへ挿入
+  * 抽出したメタデータ
+    * Mroonga・PGroongaへ挿入
+    * 絞り込みに活用
+  * 作成したスクリーンショット
+    * 検索結果表示時に掲載
+
+= まとめ
+
+  * RDBMS経由で全文検索エンジン
+    * 採用の判断材料を提供
+  * 全文検索システム実装例を紹介
+    * Mroonga・PGroonga両方
+  * 構造化データの対応方法を紹介
+    * ChupaText
+
+= 扱わなかった話題
+
+  * 運用について
+    * 障害対策・レプリケーション
+  * チューニング
+  * Groongaの機能を直接使う方法
+
+= サポートサービス紹介
+
+  * 導入支援(('note:（設計支援・性能検証・移行支援・…）'))
+  * 開発支援\n
+    (('note:（サンプルコード提供・問い合わせ対応・…）'))
+  * 運用支援(('note:（障害対応・チューニング支援・…）'))
+
+問い合わせ先：
+
+(('tag:x-small'))
+https://www.clear-code.com/contact/?type=groonga
