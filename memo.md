@@ -10,7 +10,7 @@ https://catalog.data.gov/dataset/crimes-2001-to-present-398a4
 
 ### バージョン
 
-MariaDBは10.3.3。Mroongaは7.10。
+MariaDBは10.3.2。Mroongaは7.10。
 
 `innodb_buffer_pool_size`は512M。
 
