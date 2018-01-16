@@ -268,7 +268,7 @@ MariaDB経由で\n
 = (({ORDER BY LIMIT}))
 
   # coderay sql
-  SELECT *
+  SELECT a
     FROM table
    WHERE MATCH(c)
        AGAINST('+keyword' IN BOOLEAN MODE)
@@ -294,10 +294,69 @@ MariaDB経由で\n
 
 = 検索性能
 
-  * インデックスなし
-  * TODO
+  * 全文検索インデックスのみ
+    * 等価条件：シーケンシャルスキャン
+    * 全文検索：インデックススキャン
+  * データ
+    * シカゴの犯罪データ(('note:（651万レコード）'))
+
+(('tag:xx-small'))
+詳細：((<"https://github.com/kou/rabbit-slide-kou-db-tech-salon-2018-01/blob/master/memo.md"|URL:https://github.com/kou/rabbit-slide-kou-db-tech-salon-2018-01/blob/master/memo.md>))
+
+= 等価条件：数値1つ
+
+(('tag:center'))
+26万件ヒットするケース
+
+  # RT
+  delimiter = [|]
+
+  InnoDB | 1.3s
+  Mroonga\n（デフォルト） | 1.3s
+  Mroonga\n（最適化ON） | 0.4s
+
+= 等価条件：数値1つ+真偽値2つ
+
+(('tag:center'))
+7000件ヒットするケース
+
+  # RT
+  delimiter = [|]
+
+  InnoDB | 1.6s
+  Mroonga\n（デフォルト） | 2.3s
+  Mroonga\n（最適化ON） | 0.4s
+
+= 全文検索+等価条件
+
+(('tag:center'))
+4000件ヒットするケース
+
+  # RT
+  delimiter = [|]
+
+  InnoDB | 18s
+  Mroonga\n（デフォルト） | 0.4s
+  Mroonga\n（最適化ON） | 0.4s
+
+(('note:このパターンはデフォルトで最適化が効く'))
+
+= Mroongaの検索性能まとめ
+
+  * 最適化が効くと桁違いに速い
+    * 全文検索のときはデフォルトで効く
+    * 7.10からさらなる最適化が！\n
+      (('note:まだ実験的扱いなのでデフォルトオフ'))
+  * OLAP用途にも使える
+    * MariaDB ColumnStoreを補完する\n
+      立ち位置も可
+
+(('tag:xx-small'))
+参考：((<"http://mroonga.org/ja/docs/reference/server_variables.html#mroonga-condition-push-down-type"|URL:http://mroonga.org/ja/docs/reference/server_variables.html#mroonga-condition-push-down-type>))
 
 = 全文検索システムの実装
+
+TODO
 
   * 全文検索
   * キーワードハイライト
