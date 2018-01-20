@@ -598,15 +598,7 @@ MariaDB経由で\n
                 IN BOOLEAN MODE)
     ORDER BY term LIMIT 10; -- ソート
 
-== スライドプロパティ
-
-TODO
-
-: groonga-product
-
-   mroonga
-
-= 入力補完：Mroonga\n検索例：漢字2
+= オートコンプリート\n検索例：漢字2
 
   # coderay sql
 
@@ -621,13 +613,7 @@ TODO
                 IN BOOLEAN MODE)
     ORDER BY term LIMIT 10; -- ソート
 
-== スライドプロパティ
-
-: groonga-product
-
-   mroonga
-
-= 入力補完\n検索例：カタカナ
+= オートコンプリート\n検索例：カタカナ
 
   # coderay sql
 
@@ -642,13 +628,7 @@ TODO
                 IN BOOLEAN MODE)
     ORDER BY term LIMIT 10; -- ソート
 
-== スライドプロパティ
-
-: groonga-product
-
-   mroonga
-
-= 入力補完\n検索例：ひらがな
+= オートコンプリート\n検索例：ひらがな
 
   # coderay sql
 
@@ -663,13 +643,7 @@ TODO
                 IN BOOLEAN MODE)
     ORDER BY term LIMIT 10; -- ソート
 
-== スライドプロパティ
-
-: groonga-product
-
-   mroonga
-
-= 入力補完：Mroonga\n検索例：ローマ字
+= オートコンプリート\n検索例：ローマ字
 
   # coderay sql
 
@@ -684,200 +658,9 @@ TODO
                 IN BOOLEAN MODE)
     ORDER BY term LIMIT 10; -- ソート
 
-== スライドプロパティ
-
-: groonga-product
-
-   mroonga
-
-= 入力補完：PGroonga\nテーブル定義
-
-  # coderay sql
-
-  CREATE TABLE terms (
-    -- 補完候補
-    term text,
-    -- この候補のヨミガナ（N個可）
-    readings text[]
-  );
-
-== スライドプロパティ
-
-: groonga-product
-
-   pgroonga
-
-= 入力補完：PGroonga\nデータ例
-
-  # coderay sql
-
-  INSERT INTO terms VALUES (
-    '牛乳', -- 補完候補
-    ARRAY[
-     -- ヨミガナはカタカナで指定する
-     'ギュウニュウ',
-     -- 「ミルク」でも補完できるようになる
-     'ミルク'
-    ]
-  );
-
-== スライドプロパティ
-
-: groonga-product
-
-   pgroonga
-
-= 入力補完：PGroonga\nデータ管理のポイント
-
-  * 普通のテーブルなので管理が楽
-    * 追加・削除・更新が楽
-    * ダンプ・リストアもいつも通り
-    * レプリケーションもいつも通り
-
-== スライドプロパティ
-
-: groonga-product
-
-   pgroonga
-
-= 入力補完：PGroonga\n前方一致用インデックス
-
-  # coderay sql
-
-  CREATE INDEX prefix_search ON terms
-    USING PGroonga
-    -- ...text_array_term_search...
-    (readings pgroonga_text_array_term_search_ops_v2);
-
-== スライドプロパティ
-
-: groonga-product
-
-   pgroonga
-
-= 入力補完：PGroonga\n緩い全文検索用
-
-  # coderay sql
-
-  CREATE INDEX loose_search ON terms
-    USING PGroonga (term)
-    -- 緩い全文検索用トークナイザー
-    WITH (tokenizer='TokenBigramSplitSymbolAlphaDigit');
-
-== スライドプロパティ
-
-: groonga-product
-
-   pgroonga
-
-= 入力補完：PGroonga\n検索方法
-
-  # coderay sql
-
-  SELECT term FROM terms
-    -- ヨミガナで前方一致検索
-    WHERE readings &^~ '${入力}' OR
-          -- 緩い全文検索
-          term &@ '${入力}'
-    ORDER BY term LIMIT 10; -- ソート
-
-== スライドプロパティ
-
-: groonga-product
-
-   pgroonga
-
-= 入力補完：PGroonga\n検索例：漢字1
-
-  # coderay sql
-
-  -- ユーザーが「牛」を入力した場合
-  SELECT term FROM terms
-    -- ヨミガナで前方一致検索
-    WHERE readings &^~ '牛' OR
-          -- 緩い全文検索（ヒット）
-          term &@ '牛'
-    ORDER BY term LIMIT 10; -- ソート
-
-== スライドプロパティ
-
-: groonga-product
-
-   pgroonga
-
-= 入力補完：PGroonga\n検索例：漢字2
-
-  # coderay sql
-
-  -- ユーザーが「乳」を入力した場合
-  SELECT term FROM terms
-    -- ヨミガナで前方一致検索
-    WHERE readings &^~ '乳' OR
-          -- 緩い全文検索（ヒット）
-          term &@ '乳'
-    ORDER BY term LIMIT 10; -- ソート
-
-== スライドプロパティ
-
-: groonga-product
-
-   pgroonga
-
-= 入力補完：PGroonga\n検索例：カタカナ
-
-  # coderay sql
-
-  -- ユーザーが「ギュウ」を入力した場合
-  SELECT term FROM terms
-  -- ヨミガナで前方一致検索（ヒット）
-    WHERE readings &^~ 'ギュウ' OR
-          -- 緩い全文検索
-          term &@ 'ギュウ'
-    ORDER BY term LIMIT 10; -- ソート
-
-== スライドプロパティ
-
-: groonga-product
-
-   pgroonga
-
-= 入力補完：PGroonga\n検索例：ひらがな
-
-  # coderay sql
-
-  -- ユーザーが「ぎゅう」を入力した場合
-  SELECT term FROM terms
-  -- ヨミガナで前方一致検索（ヒット）
-    WHERE readings &^~ 'ぎゅう' OR
-          -- 緩い全文検索
-          term &@ 'ぎゅう'
-    ORDER BY term LIMIT 10; -- ソート
-
-== スライドプロパティ
-
-: groonga-product
-
-   pgroonga
-
-= 入力補完：PGroonga\n検索例：ローマ字
-
-  # coderay sql
-
-  -- ユーザーが「gyu」を入力した場合
-  SELECT term FROM terms
-  -- ヨミガナで前方一致検索（ヒット）
-    WHERE readings &^~ 'gyu' OR
-          -- 緩い全文検索
-          term &@ 'gyu'
-    ORDER BY term LIMIT 10; -- ソート
-
-== スライドプロパティ
-
-: groonga-product
-
-   pgroonga
-
 = 同義語展開
+
+TODO
 
   * 同義語
     * 同じ意味だが表記が異なる語
@@ -890,9 +673,6 @@ TODO
   * 同義語管理テーブルを作成
   * クエリー内の同義語を展開
   * 展開後のクエリーで検索
-
-(('tag:xx-small'))
-https://pgroonga.github.io/ja/reference/functions/pgroonga-query-expand.html
 
 = 同義語展開：Mroonga\nテーブル定義
 
