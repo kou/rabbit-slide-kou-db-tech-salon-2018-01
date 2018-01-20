@@ -55,7 +55,7 @@
 = 実装方法\n選択肢
 
   * 全文検索サーバーを使う
-  * MariaDBを使う
+  * MariaDBでLIKEを使う
 
 = 全文検索サーバー案\nメリット
 
@@ -71,20 +71,23 @@
   * メンテナンスコスト大
     * それぞれ独自の仕組みだから
 
-= MariaDB案\nメリット
+= MariaDBでLIKE案\nメリット
 
   * 実装コスト小
     * 新しく覚えることが少ない
     * データの一元管理
   * メンテナンスコスト小
     * 既存の運用ノウハウを使える
+  * データ少なら実用的な速度
 
-= MariaDB案\nデメリット
+= MariaDBでLIKE案\nデメリット
 
-  * 組込機能では機能不足
+  * 機能不足
+    * それっぽい順のソート不可
+    * 全文検索ではソート順が重要
+    * ユーザーは先頭n件しか見ない
   * SQLの表現力不足
-    * 1クエリーで実現できない機能アリ
-    * ↑は性能を出しにくい
+    * nクエリーで実現すると性能に影響
 
 = 実現方法\n第3の選択肢
 
@@ -94,6 +97,7 @@
 = メリット
 
   * 高速で豊富な機能
+    * それっぽい順のソート可
   * 実装コスト小
   * メンテナンスコスト小
 
@@ -129,8 +133,8 @@ MariaDB経由で\n
 = 全文検索エンジン\nGroonga（ぐるんが）
 
   * 組込可能な全文検索エンジン
-    * MariaDBに組込→Mroonga
-    * PostgreSQLに組込→PGoonga
+    * MariaDB・MySQLに組込→Mroonga
+    * PostgreSQLに組込→PGroonga
   * 全文検索サーバーとして\n
     単独でも使用可能
     * MariaDBと全文検索サーバーを併用\n
@@ -147,8 +151,9 @@ MariaDB経由で\n
 
 = Mroonga（むるんが）
 
-  * MySQLのストレージエンジン
+  * MariaDBのストレージエンジン
     * InnoDB・MyISAMなどと同じレイヤー
+    * MariaDB 10.0.15から標準バンドル
   * 使用方法
     * (({CREATE TABLE (...) ENGINE=Mroonga}))
 
@@ -272,8 +277,8 @@ MariaDB経由で\n
     FROM table
    WHERE MATCH(c)
        AGAINST('+keyword' IN BOOLEAN MODE)
-  -- MySQLではなくMroongaがORDER BY LIMITを処理
-  -- →Mroongaは10レコードだけMySQLに返す
+  -- MariaDBではなくMroongaがORDER BY LIMITを処理
+  -- →Mroongaは10レコードだけMariaDBに返す
   --   マッチしたレコードすべては返さない
    ORDER BY a LIMIT 10;
 
@@ -292,7 +297,14 @@ MariaDB経由で\n
   # src = images/per-column-processing.svg
   # relative_width = 100
 
-= 検索性能
+= condition push downの最適化
+
+  * 従来はMariaDBが処理していた検索条件をストレージエンジンが処理する仕組み
+    * ストレージエンジンでの処理の方が高速なら全体として高速になる
+  * Mroonga 7.10から実験的に対応
+    * デフォルトオフ
+
+= condition push downの効果
 
   * 全文検索インデックスのみ
     * 等価条件：シーケンシャルスキャン
@@ -356,12 +368,10 @@ MariaDB経由で\n
 
 = 全文検索システムの実装
 
-TODO
-
   * 全文検索
   * キーワードハイライト
   * 周辺テキスト表示
-  * 入力補完
+  * オートコンプリート
   * 同義語展開
   * 関連文書の表示
 
@@ -371,7 +381,7 @@ TODO
   # src = images/php-document-search-search.png
   # relative_height = 100
 
-= テーブル定義：Mroonga
+= テーブル定義
 
   # coderay sql
 
@@ -384,13 +394,7 @@ TODO
   ) ENGINE=Mroonga
     DEFAULT CHARSET=utf8mb4;
 
-== スライドプロパティ
-
-: groonga-product
-
-   mroonga
-
-= データ挿入：Mroonga
+= データ挿入
 
   # coderay sql
 
@@ -399,31 +403,19 @@ TODO
     VALUES ('タイトル',
             '高速に全文検索したいですね！');
 
-== スライドプロパティ
-
-: groonga-product
-
-   mroonga
-
-= 全文検索：Mroonga
+= 全文検索
 
   # coderay sql
 
   SELECT title FROM entries
     WHERE -- MATCH AGAINSTで全文検索
       MATCH (title, content)
-      -- デフォルトORがMySQLの仕様
+      -- デフォルトORがMariaDBの仕様
       -- 「検索」または「高速」を含むとマッチ
       AGAINST ('検索 高速'
                IN BOOLEAN MODE);
 
-== スライドプロパティ
-
-: groonga-product
-
-   mroonga
-
-= AND全文検索：Mroonga
+= AND全文検索
 
   # coderay sql
 
@@ -433,13 +425,7 @@ TODO
   AGAINST ('+検索 +高速'
            IN BOOLEAN MODE);
 
-== スライドプロパティ
-
-: groonga-product
-
-   mroonga
-
-= 使いやすいAND全文検索\nMroonga
+= 使いやすいAND全文検索
 
   # coderay sql
 
@@ -450,13 +436,7 @@ TODO
   AGAINST ('*D+ 検索 高速'
            IN BOOLEAN MODE);
 
-== スライドプロパティ
-
-: groonga-product
-
-   mroonga
-
-= スコアー：Mroonga
+= それっぽい順のソート
 
   # coderay sql
 
@@ -468,122 +448,8 @@ TODO
                IN BOOLEAN MODE) AS score
     FROM entries
     WHERE -- ...
-    -- スコアーが高い順にソート
+    -- それっぽさでソート
     ORDER BY score DESC LIMIT 10;
-
-== スライドプロパティ
-
-: groonga-product
-
-   mroonga
-
-= テーブル定義：PGroonga
-
-  # coderay sql
-
-  CREATE TABLE entries (
-    -- プライマリーキーを用意する
-    -- スコアーでソートするために必要
-    id integer PRIMARY KEY,
-    title text,
-    content text
-  );
-
-== スライドプロパティ
-
-: groonga-product
-
-   pgroonga
-
-= インデックス定義\nPGroonga
-
-  # coderay sql
-
-  -- 全文検索用インデックス
-  -- よくわからないなら
-  -- デフォルトのまま使うこと！
-  CREATE INDEX entries_full_text_search
-    ON entries
-    --「USING PGroonga」=「PGroongaを使う」
-    -- スコアーを使うために主キーを入れること！
-    USING PGroonga (id, title, content);
-
-== スライドプロパティ
-
-: groonga-product
-
-   pgroonga
-
-= データ挿入：PGroonga
-
-  # coderay sql
-
-  -- 普通に挿入するだけでよい
-  INSERT INTO entries
-    VALUES (1,
-            'Groongaで高速全文検索！',
-            '高速に全文検索したいですね！');
-
-== スライドプロパティ
-
-: groonga-product
-
-   pgroonga
-
-= 全文検索：PGroonga
-
-  # coderay sql
-
-  SELECT title FROM entries
-    WHERE
-  -- &@~で全文検索
-  -- 「検索」と「高速」をAND検索
-      title &@~ '検索 高速' OR
-      content &@~ '検索 高速';
-
-== スライドプロパティ
-
-: groonga-product
-
-   pgroonga
-
-= 全文検索：LIKE\nPGroonga
-
-  # coderay sql
-
-  SELECT title FROM entries
-    WHERE
-  -- LIKEでもインデックスが効く
-  --＝アプリを書き換えずに高速化可能
-  -- ただし&@~より性能が落ちる
-      title LIKE '%検索%' OR
-      content LIKE '%検索%';
-
-== スライドプロパティ
-
-: groonga-product
-
-   pgroonga
-
-= スコアー：PGroonga
-
-  # coderay sql
-
-  SELECT
-      title,
-      -- pgroonga_score(テーブル名)で
-      -- スコアーを取得
-      pgroonga_score(entries) AS score
-    FROM entries
-    WHERE -- ...
-    -- スコアーが高い順にソート
-    ORDER BY score DESC LIMIT 10;
-
-== スライドプロパティ
-
-: groonga-product
-
-   pgroonga
 
 = ハイライト
 
@@ -591,7 +457,7 @@ TODO
   # src = images/php-document-search-search.png
   # relative_height = 100
 
-= ハイライト：Mroonga
+= ハイライト
 
   # coderay sql
 
@@ -603,12 +469,6 @@ TODO
       MATCH (title, content)
       AGAINST ('*D+ 検索 高速' IN BOOLEAN MODE);
 
-== スライドプロパティ
-
-: groonga-product
-
-   mroonga
-
 = ハイライト結果例
 
   # coderay html
@@ -619,48 +479,6 @@ TODO
   <span class="keyword">高速</span>
   全文 ↑↓キーワードはclass付け
   <span class="keyword">検索</span>！
-
-== スライドプロパティ
-
-: groonga-product
-
-   mroonga
-
-= ハイライト：PGroonga
-
-  # coderay sql
-
-  SELECT
-    pgroonga_highlight_html(
-      title,
-      -- クエリーから対象キーワードを抽出
-      pgroonga_query_extract_keywords('検索 高速'))
-    FROM entries
-    WHERE title &@~ '検索 高速' OR
-          content &@~ '検索 高速';
-
-== スライドプロパティ
-
-: groonga-product
-
-   pgroonga
-
-= ハイライト結果例
-
-  # coderay html
-
-  <Groonga>で高速全文検索！
-  ↓
-  &lt;Groonga&gt;で ← タグをエスケープ
-  <span class="keyword">高速</span>
-  全文 ↑↓キーワードはclass付け
-  <span class="keyword">検索</span>！
-
-== スライドプロパティ
-
-: groonga-product
-
-   pgroonga
 
 = 周辺テキスト
 
@@ -668,7 +486,7 @@ TODO
   # src = images/php-document-search-search.png
   # relative_height = 100
 
-= 周辺テキスト：Mroonga
+= 周辺テキスト
 
   # coderay sql
 
@@ -679,12 +497,6 @@ TODO
     WHERE
       MATCH (title, content)
       AGAINST ('*D+ 検索 高速' IN BOOLEAN MODE);
-
-== スライドプロパティ
-
-: groonga-product
-
-   mroonga
 
 = 周辺テキスト結果例
 
@@ -700,69 +512,28 @@ TODO
   </div>
   <div class="snippet">...</div> ←2つ目
 
-== スライドプロパティ
-
-: groonga-product
-
-   mroonga
-
-= 周辺テキスト：PGroonga
-
-  # coderay sql
-
-  SELECT
-    pgroonga_snippet_html(
-      content,
-      -- クエリーから対象キーワードを抽出
-      pgroonga_query_extract_keywords('検索 高速'))
-    FROM entries
-    WHERE title &@~ '検索 高速' OR
-          content &@~ '検索 高速';
-
-== スライドプロパティ
-
-: groonga-product
-
-   pgroonga
-
-= 周辺テキスト結果例
-
-  # coderay html
-
-  ...<Groonga>で高速全文検索！...
-  ↓
-  ARRAY[
-    ↓ 1つ目
-    'ga&gt;で ←タグをエスケープ
-     <span class="keyword">高速</span>
-     全文 ↑↓キーワードはclass付け
-     <span class="keyword">検索/span>！',
-    '...' ← 2つ目
-  ]
-
-== スライドプロパティ
-
-: groonga-product
-
-   pgroonga
-
-= 入力補完
+= オートコンプリート
 
   # image
   # src = images/php-document-search.png
   # relative_height = 100
 
-= 入力補完\n実装方法
+= オートコンプリート：必要なもの
+
+  * マスターテーブル
+    * 候補（例：牛乳）
+    * 候補のヨミ（カタカナ・複数可）
+      * 例1：ギュウニュウ
+      * 例2：ミルク
+
+= オートコンプリート：実装方法
 
   * 以下の検索のOR
-    * ヨミガナでの前方一致検索
-    * 緩い全文検索
-  * 表示文字列でソートして提示
+    * ヨミでの前方一致検索
+    * 候補を緩い全文検索
+  * 候補でソートして提示
 
-(('tag:xx-small'))
-https://pgroonga.github.io/ja/how-to/auto-complete.html
-
-= 入力補完：Mroonga\nテーブル定義：補完候補
+= オートコンプリート：テーブル定義
 
   # coderay sql
 
@@ -778,13 +549,7 @@ https://pgroonga.github.io/ja/how-to/auto-complete.html
                tokenizer "off"' -- トークナイザー不要
   ) ENGINE=Mroonga DEFAULT CHARSET=utf8mb4;
 
-== スライドプロパティ
-
-: groonga-product
-
-   mroonga
-
-= 入力補完：Mroonga\nデータ例
+= オートコンプリート：データ例
 
   # coderay sql
 
@@ -797,26 +562,14 @@ https://pgroonga.github.io/ja/how-to/auto-complete.html
     'ミルク' -- 「ミルク」でも補完できるように
   );
 
-== スライドプロパティ
-
-: groonga-product
-
-   mroonga
-
-= 入力補完：Mroonga\nデータ管理のポイント
+= オートコンプリート\nデータ管理のポイント
 
   * 普通のテーブルなので管理が楽
     * 追加・削除・更新が楽
     * ダンプ・リストアもいつも通り
     * レプリケーションもいつも通り
 
-== スライドプロパティ
-
-: groonga-product
-
-   mroonga
-
-= 入力補完：Mroonga\n検索方法
+= オートコンプリート\n検索方法
 
   # coderay sql
 
@@ -830,13 +583,7 @@ https://pgroonga.github.io/ja/how-to/auto-complete.html
                 IN BOOLEAN MODE)
     ORDER BY term LIMIT 10; -- ソート
 
-== スライドプロパティ
-
-: groonga-product
-
-   mroonga
-
-= 入力補完：Mroonga\n検索例：漢字1
+= オートコンプリート\n検索例：漢字1
 
   # coderay sql
 
@@ -852,6 +599,8 @@ https://pgroonga.github.io/ja/how-to/auto-complete.html
     ORDER BY term LIMIT 10; -- ソート
 
 == スライドプロパティ
+
+TODO
 
 : groonga-product
 
