@@ -16,9 +16,9 @@ MariaDBには超高速な全文検索を実現するMroongaストレージエン
 
 === インストール
 
-  gem install rabbit-slide-kou-db-tech-salon-2018-01
+  gem install rabbit-slide-kou-jpmug-db-study-1
 
 === 表示
 
-  rabbit rabbit-slide-kou-db-tech-salon-2018-01.gem
+  rabbit rabbit-slide-kou-jpmug-db-study-1.gem
 

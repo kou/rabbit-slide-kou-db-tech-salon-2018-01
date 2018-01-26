@@ -1,5 +1,5 @@
 ---
-id: db-tech-salon-2018-01
+id: jpmug-db-study-1
 base_name: mariadb-mroonga-all-languages-supported-super-fast-full-text-search-system
 tags:
 - rabbit
@@ -7,7 +7,7 @@ tags:
 - mroonga
 - groonga
 - full-text-search
-- db-tech-salon
+- jpmug
 presentation_date: 2018-01-30
 presentation_start_time: 2018-01-30T19:00:00+09:00
 presentation_end_time: 2018-01-30T20:00:00+09:00

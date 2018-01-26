@@ -5,13 +5,13 @@
 : institution
    クリアコード
 : content-source
-   db tech salon
+   第一回 JPMUG DB勉強会
 : date
    2018-01-30
 : start-time
-   2018-01-30T19:00:00+09:00
+   2018-01-30T19:25:00+09:00
 : end-time
-   2018-01-30T20:00:00+09:00
+   2018-01-30T20:10:00+09:00
 : theme
    .
 
@@ -313,7 +313,7 @@ MariaDB経由で\n
     * シカゴの犯罪データ(('note:（651万レコード）'))
 
 (('tag:xx-small'))
-詳細：((<"https://github.com/kou/rabbit-slide-kou-db-tech-salon-2018-01/blob/master/memo.md"|URL:https://github.com/kou/rabbit-slide-kou-db-tech-salon-2018-01/blob/master/memo.md>))
+詳細：((<"https://github.com/kou/rabbit-slide-kou-jpmug-db-study-1/blob/master/memo.md"|URL:https://github.com/kou/rabbit-slide-kou-jpmug-db-study-1/blob/master/memo.md>))
 
 = 等価条件：数値1つ
 
