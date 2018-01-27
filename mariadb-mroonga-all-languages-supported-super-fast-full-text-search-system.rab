@@ -149,6 +149,14 @@ MariaDB経由で\n
     * 開発者が日本人
     * 便利機能が組み込み
 
+= GroongaとUnicode
+
+  * NFKCベースの正規化機能を組込
+  * Unicode 5.1ベースで古い
+    * 2008年の仕様
+  * Unicode 10.0（最新）対応中
+    * ※正規化方式を変えるとインデックスの互換性がなくなる（=要インデックス再構築）のでデフォルトは変えない
+
 = Mroonga（むるんが）
 
   * MariaDBのストレージエンジン
@@ -157,7 +165,34 @@ MariaDB経由で\n
   * 使用方法
     * (({CREATE TABLE (...) ENGINE=Mroonga}))
 
-= 全文検索性能の違い\n計測データ
+= 照合順序：COLLATION
+
+  * 文字の並び順の規則
+    * 文字が同一かどうかの判定にも利用
+  * 適切な日本語規則なし
+    * いわゆる🍣＝🍺問題
+
+(('note:MySQL 8では適切な日本語規則が追加される'))
+
+= Mroongaの照合順序
+
+  * MariaDB互換のもの
+    * (({utf8mb4_ja_0900_*}))互換は対応予定
+  * MariaDB互換を微調整したもの
+    * 日本語でもいい感じ
+  * Groonga提供のもの
+    * NFKCベースのもの
+    * 日本語でもいい感じ
+
+= Mroongaで照合順序
+
+  * MariaDB互換がよい！
+    * 互換正規化処理を使用：デフォルト
+  * MariaDB互換は気にしないから\n
+    いい感じに！
+    * Groonga提供のものを使用
+
+= 全文検索性能\n計測データ
 
   * 対象：Wikipedia日本語版
   * レコード数：約185万件
@@ -284,12 +319,12 @@ MariaDB経由で\n
 
 = (({ORDER BY LIMIT}))の最適化
 
-  * (('wait'))Mroongaが検索
+  * Mroongaが検索
     * カラム毎の処理でI/Oを局所化\n
       (('note:（索引非使用時）'))
-  * (('wait'))Mroongaがソート
+  * Mroongaがソート
     * カラム毎の処理でI/Oを局所化
-  * (('wait'))Mroongaが(({OFFSET}))/(({LIMIT}))を処理
+  * Mroongaが(({OFFSET}))/(({LIMIT}))を処理
 
 = カラム毎の処理は速い
 
@@ -660,8 +695,6 @@ MariaDB経由で\n
 
 = 同義語展開
 
-TODO
-
   * 同義語
     * 同じ意味だが表記が異なる語
     * 例：「刺身」と「お造り」
@@ -684,12 +717,6 @@ TODO
       COMMENT 'normalizer "NormalizerAuto"'
   ) ENGINE=Mroonga DEFAULT CHARSET=utf8mb4;
 
-== スライドプロパティ
-
-: groonga-product
-
-   mroonga
-
 = 同義語展開\nデータ例
 
   # coderay sql
@@ -701,24 +728,12 @@ TODO
            ('お造り', 'お造り'),
            ('お造り', '刺身');
 
-== スライドプロパティ
-
-: groonga-product
-
-   mroonga
-
 = 同義語展開\nデータ管理のポイント
 
   * 普通のテーブルなので管理が楽
     * 追加・削除・更新が楽
     * ダンプ・リストアもいつも通り
     * レプリケーションもいつも通り
-
-== スライドプロパティ
-
-: groonga-product
-
-   mroonga
 
 = 同義語展開：Mroonga\n確認方法
 
@@ -732,12 +747,6 @@ TODO
   );
   -- '居酒屋 ((刺身) OR (お造り))'
 
-== スライドプロパティ
-
-: groonga-product
-
-   mroonga
-
 = 同義語展開：Mroonga\n検索方法
 
   # coderay sql
@@ -750,109 +759,6 @@ TODO
                                     'synonym',
                                     '*D+ 居酒屋 刺身')
                IN BOOLEAN MODE);
-
-== スライドプロパティ
-
-: groonga-product
-
-   mroonga
-
-= 同義語展開：PGroonga\nテーブル定義
-
-  # coderay sql
-  CREATE TABLE synonyms (
-    -- 展開対象の語
-    term text,
-    -- 同義語のリスト
-    -- term自身も含める
-    -- 含めない場合はtermが検索禁止語になる
-    terms text[]
-  );
-
-== スライドプロパティ
-
-: groonga-product
-
-   pgroonga
-
-= 同義語展開：PGroonga\nデータ例
-
-  # coderay sql
-  INSERT INTO synonyms
-    VALUES ('刺身', -- 「刺身」を展開
-            ARRAY['刺身', 'お造り']),
-           ('お造り', -- 「お造り」を展開
-            ARRAY['お造り', '刺身']);
-
-== スライドプロパティ
-
-: groonga-product
-
-   pgroonga
-
-= 同義語展開：PGroonga\nデータ管理のポイント
-
-  * 普通のテーブルなので管理が楽
-    * 追加・削除・更新が楽
-    * ダンプ・リストアもいつも通り
-    * レプリケーションもいつも通り
-
-== スライドプロパティ
-
-: groonga-product
-
-   pgroonga
-
-= 同義語展開：PGroonga\nインデックス定義
-
-  # coderay sql
-  CREATE INDEX synonym_search ON synonyms
-    USING PGroonga
-    -- ...text_term_search...
-    -- termで完全一致検索をするため
-    (term pgroonga_text_term_search_ops_v2);
-
-== スライドプロパティ
-
-: groonga-product
-
-   pgroonga
-
-= 同義語展開：PGroonga\n確認方法
-
-  # coderay sql
-
-  SELECT pgroonga_query_expand(
-    'synonyms', -- テーブル名
-    'term', -- 展開対象のカラム名
-    'terms', -- 対応する同義語配列のカラム名
-    '刺身' -- クエリー
-  );
-  -- '((刺身) OR (お造り))'
-
-== スライドプロパティ
-
-: groonga-product
-
-   pgroonga
-
-= 同義語展開：PGroonga\n検索方法
-
-  # coderay sql
-  SELECT title FROM entries
-    WHERE
-   -- title &@~ '居酒屋 ((刺身) OR (お造り))'になる
-      title &@~
-        pgroonga_query_expand('synonyms',
-                              'term',
-                              'terms',
-                              '居酒屋 刺身');
-
-== スライドプロパティ
-
-: groonga-product
-
-   pgroonga
 
 = 類似文書検索
 
@@ -875,12 +781,6 @@ TODO
       COMMENT 'tokenizer "TokenMecab"'
   ) -- ...
 
-== スライドプロパティ
-
-: groonga-product
-
-   mroonga
-
 = 類似文書検索：Mroonga\n検索方法
 
   # coderay sql
@@ -893,12 +793,6 @@ TODO
       AGAINST ('...Groongaで高速全文検索！...'
                IN NATURAL LANGUAGE MODE);
 
-== スライドプロパティ
-
-: groonga-product
-
-   mroonga
-
 = 類似文書検索：Mroonga\n結果例
 
   クエリー：
@@ -907,111 +801,13 @@ TODO
   ヒット例：
      ...Mroongaで高速全文検索！...
 
-== スライドプロパティ
-
-: groonga-product
-
-   mroonga
-
-= 照合順序：COLLATION
-
-  * 文字の並び順の規則
-    * 文字が同一かどうかの判定にも利用
-  * 適切な日本語規則なし
-    * いわゆる🍣＝🍺問題
-
-(('note:MySQL 8では適切な日本語規則が追加される'))
-
-== スライドプロパティ
-
-: groonga-product
-
-   mroonga
-
-= Mroongaの照合順序
-
-  * MySQL互換のもの
-  * MySQL互換を微調整したもの
-    * 日本語でもいい感じ
-  * Groonga提供のもの
-    * 日本語でもいい感じ
-
-== スライドプロパティ
-
-: groonga-product
-
-   mroonga
-
-= 微調整した照合順序
-
-  # coderay sql
-  FULLTEXT INDEX (content)
-    COMMENT 'normalizer "${ノーマライザー名}"'
-  ノーマライザー名：
-    NormalizerMySQLUnicode520CI
-      ExceptKanaCI
-            KanaWithVoicedSoundMark
-
-== スライドプロパティ
-
-: groonga-product
-
-   mroonga
-
-= 類似文書検索：PGroonga\nインデックス定義
-
-  # coderay sql
-
-  CREATE INDEX entries_similar_search
-    ON entries
-    USING PGroonga (id, content)
-    -- TokenMecabを使うと精度向上
-    WITH (tokenizer='TokenMecab');
-
-== スライドプロパティ
-
-: groonga-product
-
-   pgroonga
-
-= 類似文書検索：PGroonga\n検索方法
-
-  # coderay sql
-
-  SELECT title
-    FROM entries
-    WHERE
-      -- &@*で類似文書検索
-      -- 既存文書の内容をそのまま指定
-      content &@*
-        '...Groongaで高速全文検索！...';
-
-== スライドプロパティ
-
-: groonga-product
-
-   pgroonga
-
-= 類似文書検索：PGroonga\n結果例
-
-  クエリー：
-     ...Groongaで高速全文検索！...
-
-  ヒット例：
-     ...PGroongaで高速全文検索！...
-
-== スライドプロパティ
-
-: groonga-product
-
-   pgroonga
-
 = 全文検索システムの実装\nまとめ
 
   * 全文検索
   * キーワードハイライト
   * 周辺テキスト表示
-  * 入力補完・同義語展開
+  * オートコンプリート
+  * 同義語展開
   * 関連文書の表示
 
 = 全文検索システムの実装\n次の一歩
@@ -1121,19 +917,17 @@ TODO
 = ChupaText：活用例
 
   * 抽出したテキスト
-    * Mroonga・PGroongaへ挿入
+    * Mroongaへ挿入
   * 抽出したメタデータ
-    * Mroonga・PGroongaへ挿入
+    * Mroongaへ挿入
     * 絞り込みに活用
   * 作成したスクリーンショット
     * 検索結果表示時に掲載
 
 = まとめ
 
-  * RDBMS経由で全文検索エンジン
-    * 採用の判断材料を提供
+  * MariaDBの全文検索まわり
   * 全文検索システム実装例を紹介
-    * Mroonga・PGroonga両方
   * 構造化データの対応方法を紹介
     * ChupaText
 
@@ -1154,4 +948,4 @@ TODO
 問い合わせ先：
 
 (('tag:x-small'))
-https://www.clear-code.com/contact/?type=groonga
+((<"https://www.clear-code.com/contact/?type=groonga"|URL:https://www.clear-code.com/contact/?type=groonga>))
