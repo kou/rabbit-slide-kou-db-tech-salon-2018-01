@@ -615,7 +615,7 @@ MariaDB経由で\n
                        mroonga_escape(${入力} AS script),
                        ')') IN BOOLEAN MODE) OR
          MATCH (term) -- 候補を緩く全文検索
-       AGAINST (CONCAT('*D+ ', mroonga_escape(${入力})))
+       AGAINST (CONCAT('*D+ ', mroonga_escape(${入力}))
                 IN BOOLEAN MODE)
     ORDER BY term LIMIT 10; -- ソート
 
@@ -630,7 +630,7 @@ MariaDB経由で\n
                        mroonga_escape('牛' AS script),
                        ')') IN BOOLEAN MODE) OR
          MATCH (term) -- 候補を緩く全文検索（ヒット）
-       AGAINST (CONCAT('*D+ ', mroonga_escape('牛')))
+       AGAINST (CONCAT('*D+ ', mroonga_escape('牛'))
                 IN BOOLEAN MODE)
     ORDER BY term LIMIT 10; -- ソート
 
@@ -645,7 +645,7 @@ MariaDB経由で\n
                        mroonga_escape('乳' AS script),
                        ')') IN BOOLEAN MODE) OR
          MATCH (term) -- 候補を緩く全文検索（ヒット）
-       AGAINST (CONCAT('*D+ ', mroonga_escape('乳')))
+       AGAINST (CONCAT('*D+ ', mroonga_escape('乳'))
                 IN BOOLEAN MODE)
     ORDER BY term LIMIT 10; -- ソート
 
@@ -660,7 +660,7 @@ MariaDB経由で\n
                        mroonga_escape('ギュウ' AS script),
                        ')') IN BOOLEAN MODE) OR
          MATCH (term) -- 候補を緩く全文検索
-       AGAINST (CONCAT('*D+ ', mroonga_escape('ギュウ')))
+       AGAINST (CONCAT('*D+ ', mroonga_escape('ギュウ'))
                 IN BOOLEAN MODE)
     ORDER BY term LIMIT 10; -- ソート
 
@@ -675,7 +675,7 @@ MariaDB経由で\n
                        mroonga_escape('ぎゅう' AS script),
                        ')') IN BOOLEAN MODE) OR
          MATCH (term) -- 候補を緩く全文検索
-       AGAINST (CONCAT('*D+ ', mroonga_escape('ぎゅう')))
+       AGAINST (CONCAT('*D+ ', mroonga_escape('ぎゅう'))
                 IN BOOLEAN MODE)
     ORDER BY term LIMIT 10; -- ソート
 
@@ -690,7 +690,7 @@ MariaDB経由で\n
                        mroonga_escape('gyu' AS script),
                        ')') IN BOOLEAN MODE) OR
          MATCH (term) -- 候補を緩く全文検索
-       AGAINST (CONCAT('*D+ ', mroonga_escape('gyu')))
+       AGAINST (CONCAT('*D+ ', mroonga_escape('gyu'))
                 IN BOOLEAN MODE)
     ORDER BY term LIMIT 10; -- ソート
 
